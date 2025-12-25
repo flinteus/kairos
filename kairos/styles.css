@@ -20,7 +20,7 @@
     --color-strength-bar-bg: #ffffff1a;
     --color-settings-bg: #ffffff0d;
     --color-settings-border: #ffffff1a;
-    --color-slider-bg: #ffffff1a;
+    --color-slider-bground: #ffffff1a;
     --color-webkit-slider-thumb-bg: #4361ee;
 }
 
@@ -28,10 +28,10 @@
 --color-bg: white;
 --color-body: black;
 --color-subtitle: dimgray;
---color-password-display-bg: #f0f8ff; /* Почти непрозрачный белый */
+--color-password-display-bg: #f0f8ff; 
 --color-password-display-border: lightgray;
 --color-password-output-color: darkblue;
---color-refresh-btn-bg: #bfd0ffe6; /* Белый фон с лёгким оттенком */
+--color-refresh-btn-bg: #bfd0ffe6; 
 --color-refresh-btn-color: navy;
 --color-refresh-hover: skyblue;
 --color-password-strength-bg: #f0f8ff;
@@ -39,7 +39,7 @@
 --color-strength-bar-bg: #bfd0ffe6;
 --color-settings-bg: #f0f8ff;
 --color-settings-border: gainsboro;
---color-slider-bg: #b0c4de;
+--color-slider-bground: #bfd0ffe6;
 }
 
 body {
@@ -201,7 +201,7 @@ input[type="checkbox"] {
     width: 100%;
     height: 6px;
     border-radius: 3px;
-    background: var(--color-slider-bg);
+    background: var(--color-slider-bground);
     outline: none;
     margin-top: 8px;
     -webkit-appearance: none;
@@ -322,11 +322,11 @@ input[type="checkbox"] {
     transform: translateY(0);
 }
 .ui-switch {
-  /* switch */
+
   --switch-bg: rgb(135, 150, 165);
   --switch-width: 48px;
   --switch-height: 20px;
-  /* circle */
+
   --circle-diameter: 30px;
   --circle-bg: rgb(0, 56, 146);
   --circle-inset: calc((var(--circle-diameter) - var(--switch-height)) / 2);
@@ -342,7 +342,7 @@ input[type="checkbox"] {
   appearance: none;
   width: var(--switch-width);
   height: var(--switch-height);
-  background: var(--switch-bg);
+  /* background: var(--switch-bg); */
   border-radius: 999px;
   position: relative;
   cursor: pointer;
@@ -389,7 +389,7 @@ input[type="checkbox"] {
   opacity: 0;
 }
 
-/* actions */
+
 
 .ui-switch input:checked+.slider .circle {
   left: calc(100% - var(--circle-diameter));
