@@ -22,6 +22,7 @@
     --color-settings-border: #ffffff1a;
     --color-slider-bground: #ffffff1a;
     --color-webkit-slider-thumb-bg: #4361ee;
+    --header-color: rgba(255, 255, 255, 0.1);
 }
 
 .ligtstyle {
@@ -40,6 +41,7 @@
 --color-settings-bg: #f0f8ff;
 --color-settings-border: gainsboro;
 --color-slider-bground: #bfd0ffe6;
+--header-color: lightgray;
 }
 
 body {
@@ -57,7 +59,7 @@ header {
     text-align: center;
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid var(--header-color);
 }
 
 header h1 {
