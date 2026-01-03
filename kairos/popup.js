@@ -237,7 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 let styleMode = localStorage.getItem('styleMode');
-const styleToggle = document.querySelector('.slider');
+const styleToggle = document.querySelector('.ui-switch input[type="checkbox"]');
 
 const enableLigtStyle = () => {
   document.body.classList.add('ligtstyle');
