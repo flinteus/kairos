@@ -337,6 +337,9 @@ input[type="checkbox"] {
 }
 
 .slider {
+    position: relative;
+  top: 10px; 
+  left: 5px; 
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
