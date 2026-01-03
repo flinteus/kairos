@@ -199,7 +199,7 @@ input[type="checkbox"] {
     height: 16px;
 }
 
-.slider {
+.length-slider {
     width: 100%;
     height: 6px;
     border-radius: 3px;
@@ -209,7 +209,7 @@ input[type="checkbox"] {
     -webkit-appearance: none;
 }
 
-.slider::-webkit-slider-thumb {
+.length-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 18px;
     height: 18px;
@@ -325,10 +325,8 @@ input[type="checkbox"] {
 }
 .ui-switch {
 
-  --switch-bg: rgb(135, 150, 165);
   --switch-width: 48px;
   --switch-height: 20px;
-
   --circle-diameter: 30px;
   --circle-bg: rgb(0, 56, 146);
   --circle-inset: calc((var(--circle-diameter) - var(--switch-height)) / 2);
@@ -344,7 +342,7 @@ input[type="checkbox"] {
   appearance: none;
   width: var(--switch-width);
   height: var(--switch-height);
-  /* background: var(--switch-bg); */
+  background: var(--color-slider-bground);
   border-radius: 999px;
   position: relative;
   cursor: pointer;
