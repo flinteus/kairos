@@ -16,37 +16,91 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordHistory = document.getElementById('passwordHistory');
     const clearHistoryBtn = document.getElementById('clearHistoryBtn');
     const notification = document.getElementById('notification');
+    const themeToggle = document.querySelector('.ui-switch input[type="checkbox"]');
 
     // Наборы символов
     const uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const uppercaseCharsNoSimilar = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // Без I, O
     const lowercaseChars = 'abcdefghijklmnopqrstuvwxyz';
+    const lowercaseCharsNoSimilar = 'abcdefghijkmnpqrstuvwxyz'; // Без l, o
     const numberChars = '0123456789';
+    const numberCharsNoSimilar = '23456789'; // Без 0, 1
     const symbolChars = '!@#$%^&*()_+-=[]{}|;:,.<>?';
     const similarChars = 'il1Lo0';
 
-    // Загружаем историю из localStorage
-    let history = JSON.parse(localStorage.getItem('passwordHistory')) || [];
-    renderHistory();
-
-    // Обновляем отображение длины пароля
-    lengthSlider.addEventListener('input', function() {
-        lengthValue.textContent = this.value;
+    // Загружаем историю и настройки из localStorage
+    let history = loadFromStorage('passwordHistory', []);
+    const settings = loadFromStorage('passwordSettings', {
+        length: 12,
+        uppercase: true,
+        lowercase: true,
+        numbers: true,
+        symbols: true,
+        excludeSimilar: true
     });
 
-    // Генерация пароля
+    // Загружаем тему
+    const isLightTheme = loadFromStorage('theme', false);
+    if (themeToggle) {
+        themeToggle.checked = isLightTheme;
+        updateTheme(isLightTheme);
+    }
+
+    // Инициализация интерфейса
+    initializeUI();
+
+    // События
+    lengthSlider.addEventListener('input', updateLengthValue);
     generateBtn.addEventListener('click', generatePassword);
     refreshBtn.addEventListener('click', generatePassword);
-
-    // Копирование пароля
     copyBtn.addEventListener('click', copyPassword);
-
-    // Очистка истории
     clearHistoryBtn.addEventListener('click', clearHistory);
+    
+    if (themeToggle) {
+        themeToggle.addEventListener('change', toggleTheme);
+    }
 
-    // Генерируем пароль при загрузке
+    // Добавляем сохранение настроек при изменении
+    [uppercaseCheckbox, lowercaseCheckbox, numbersCheckbox, symbolsCheckbox, excludeSimilarCheckbox]
+        .forEach(element => {
+            element.addEventListener('change', saveSettings);
+        });
+    
+    lengthSlider.addEventListener('change', saveSettings);
+
+    // Инициализация
+    renderHistory();
     generatePassword();
 
-    // Функция генерации пароля
+    // ===== ОСНОВНЫЕ ФУНКЦИИ =====
+
+    function initializeUI() {
+        // Восстанавливаем настройки
+        lengthSlider.value = settings.length;
+        lengthValue.textContent = settings.length;
+        uppercaseCheckbox.checked = settings.uppercase;
+        lowercaseCheckbox.checked = settings.lowercase;
+        numbersCheckbox.checked = settings.numbers;
+        symbolsCheckbox.checked = settings.symbols;
+        excludeSimilarCheckbox.checked = settings.excludeSimilar;
+    }
+
+    function updateLengthValue() {
+        lengthValue.textContent = lengthSlider.value;
+    }
+
+    function saveSettings() {
+        const settings = {
+            length: parseInt(lengthSlider.value),
+            uppercase: uppercaseCheckbox.checked,
+            lowercase: lowercaseCheckbox.checked,
+            numbers: numbersCheckbox.checked,
+            symbols: symbolsCheckbox.checked,
+            excludeSimilar: excludeSimilarCheckbox.checked
+        };
+        saveToStorage('passwordSettings', settings);
+    }
+
     function generatePassword() {
         const length = parseInt(lengthSlider.value);
         const includeUppercase = uppercaseCheckbox.checked;
@@ -55,6 +109,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const includeSymbols = symbolsCheckbox.checked;
         const excludeSimilar = excludeSimilarCheckbox.checked;
 
+        // Проверяем длину
+        if (length < 6 || length > 32) {
+            passwordOutput.textContent = 'Длина должна быть 6-32 символа';
+            updatePasswordStrength('');
+            return;
+        }
+
         // Проверяем, что выбран хотя бы один набор символов
         if (!includeUppercase && !includeLowercase && !includeNumbers && !includeSymbols) {
             passwordOutput.textContent = 'Выберите хотя бы один тип символов';
@@ -62,24 +123,56 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Создаем набор доступных символов
+        // Создаем набор доступных символов с учетом исключения похожих
         let chars = '';
-        if (includeUppercase) chars += uppercaseChars;
-        if (includeLowercase) chars += lowercaseChars;
-        if (includeNumbers) chars += numberChars;
-        if (includeSymbols) chars += symbolChars;
-
-        // Убираем похожие символы если нужно
-        if (excludeSimilar) {
-            chars = chars.split('').filter(char => !similarChars.includes(char)).join('');
+        if (includeUppercase) {
+            chars += excludeSimilar ? uppercaseCharsNoSimilar : uppercaseChars;
+        }
+        if (includeLowercase) {
+            chars += excludeSimilar ? lowercaseCharsNoSimilar : lowercaseChars;
+        }
+        if (includeNumbers) {
+            chars += excludeSimilar ? numberCharsNoSimilar : numberChars;
+        }
+        if (includeSymbols) {
+            chars += symbolChars; // Спецсимволы
         }
 
-        // Генерируем пароль
+        // Проверяем, что набор символов не пустой (может стать пустым после excludeSimilar)
+        if (chars.length === 0) {
+            passwordOutput.textContent = 'Нет доступных символов';
+            updatePasswordStrength('');
+            return;
+        }
+
+        // Генерируем пароль с использованием криптографически безопасного генератора
         let password = '';
-        for (let i = 0; i < length; i++) {
-            const randomIndex = Math.floor(Math.random() * chars.length);
-            password += chars[randomIndex];
+        try {
+            // Создаем массив криптографически безопасных случайных чисел
+            const randomValues = new Uint32Array(length);
+            crypto.getRandomValues(randomValues);
+            
+            for (let i = 0; i < length; i++) {
+                const randomIndex = randomValues[i] % chars.length;
+                password += chars[randomIndex];
+            }
+        } catch (error) {
+            // Fallback на Math.random() если crypto API недоступен
+            console.warn('Crypto API недоступен, используется Math.random()');
+            for (let i = 0; i < length; i++) {
+                const randomIndex = Math.floor(Math.random() * chars.length);
+                password += chars[randomIndex];
+            }
         }
+
+        // Гарантируем наличие выбранных типов символов
+        password = ensureCharacterTypes(password, {
+            includeUppercase,
+            includeLowercase,
+            includeNumbers,
+            includeSymbols,
+            excludeSimilar
+        });
 
         // Отображаем пароль
         passwordOutput.textContent = password;
@@ -89,11 +182,104 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Добавляем в историю
         addToHistory(password);
+        
+        // Сохраняем настройки
+        saveSettings();
     }
 
-    // Функция оценки сложности пароля
+    function ensureCharacterTypes(password, options) {
+        const { includeUppercase, includeLowercase, includeNumbers, includeSymbols, excludeSimilar } = options;
+        
+        // Определяем наборы символов для каждого типа
+        const uppercaseSet = excludeSimilar ? uppercaseCharsNoSimilar : uppercaseChars;
+        const lowercaseSet = excludeSimilar ? lowercaseCharsNoSimilar : lowercaseChars;
+        const numberSet = excludeSimilar ? numberCharsNoSimilar : numberChars;
+        
+        // Проверяем, какие типы символов уже есть в пароле
+        const hasUppercase = includeUppercase && password.split('').some(char => 
+            excludeSimilar ? uppercaseSet.includes(char) : /[A-Z]/.test(char)
+        );
+        
+        const hasLowercase = includeLowercase && password.split('').some(char => 
+            excludeSimilar ? lowercaseSet.includes(char) : /[a-z]/.test(char)
+        );
+        
+        const hasNumbers = includeNumbers && password.split('').some(char => 
+            excludeSimilar ? numberSet.includes(char) : /[0-9]/.test(char)
+        );
+        
+        const hasSymbols = includeSymbols && password.split('').some(char => 
+            symbolChars.includes(char)
+        );
+        
+        // Если все требуемые типы уже присутствуют, возвращаем пароль как есть
+        if ((!includeUppercase || hasUppercase) &&
+            (!includeLowercase || hasLowercase) &&
+            (!includeNumbers || hasNumbers) &&
+            (!includeSymbols || hasSymbols)) {
+            return password;
+        }
+        
+        // Собираем массивы символов для недостающих типов
+        const missingTypes = [];
+        
+        if (includeUppercase && !hasUppercase) {
+            missingTypes.push({
+                chars: uppercaseSet,
+                description: 'заглавная буква'
+            });
+        }
+        
+        if (includeLowercase && !hasLowercase) {
+            missingTypes.push({
+                chars: lowercaseSet,
+                description: 'строчная буква'
+            });
+        }
+        
+        if (includeNumbers && !hasNumbers) {
+            missingTypes.push({
+                chars: numberSet,
+                description: 'цифра'
+            });
+        }
+        
+        if (includeSymbols && !hasSymbols) {
+            missingTypes.push({
+                chars: symbolChars,
+                description: 'спецсимвол'
+            });
+        }
+        
+        // Заменяем случайные символы на недостающие типы
+        let passwordArray = password.split('');
+        
+        for (const type of missingTypes) {
+            // Находим случайную позицию для замены
+            let randomPosition;
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            do {
+                randomPosition = Math.floor(Math.random() * passwordArray.length);
+                attempts++;
+                
+                // Пропускаем позиции, где уже есть спецсимвол (чтобы не заменять их)
+                if (attempts >= maxAttempts || !symbolChars.includes(passwordArray[randomPosition])) {
+                    break;
+                }
+            } while (symbolChars.includes(passwordArray[randomPosition]) && attempts < maxAttempts);
+            
+            // Выбираем случайный символ из нужного набора
+            const randomCharIndex = Math.floor(Math.random() * type.chars.length);
+            passwordArray[randomPosition] = type.chars[randomCharIndex];
+        }
+        
+        return passwordArray.join('');
+    }
+
     function updatePasswordStrength(password) {
-        if (!password) {
+        if (!password || password.length === 0) {
             strengthText.textContent = '-';
             strengthBar.style.width = '0%';
             strengthBar.style.backgroundColor = '#777';
@@ -103,7 +289,7 @@ document.addEventListener('DOMContentLoaded', function() {
         let score = 0;
         const length = password.length;
 
-        // Оценка за длину
+        // Оценка за длину (больший вес)
         if (length >= 6 && length <= 8) score += 1;
         else if (length >= 9 && length <= 12) score += 2;
         else if (length >= 13 && length <= 16) score += 3;
@@ -115,12 +301,39 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasNumbers = /[0-9]/.test(password);
         const hasSymbols = /[^a-zA-Z0-9]/.test(password);
 
-        let diversityScore = [hasLowercase, hasUppercase, hasNumbers, hasSymbols].filter(Boolean).length;
-        score += diversityScore;
+        const diversityScore = [hasLowercase, hasUppercase, hasNumbers, hasSymbols].filter(Boolean).length;
+        score += diversityScore * 2; // Больший вес разнообразию
+
+        // Штраф за последовательности и повторения
+        const sequences = [
+            '123', '234', '345', '456', '567', '678', '789',
+            'abc', 'bcd', 'cde', 'def', 'efg', 'fgh', 'ghi', 
+            'hij', 'ijk', 'jkl', 'klm', 'lmn', 'mno', 'nop', 
+            'opq', 'pqr', 'qrs', 'rst', 'stu', 'tuv', 'uvw', 'vwx', 'wxy', 'xyz'
+        ];
+        
+        let hasSequence = false;
+        const passwordLower = password.toLowerCase();
+        for (const seq of sequences) {
+            if (passwordLower.includes(seq)) {
+                hasSequence = true;
+                break;
+            }
+        }
+        
+        const hasRepeatedChars = /(.)\1{2,}/.test(password); // 3+ одинаковых символа подряд
+        
+        if (hasSequence) score -= 1;
+        if (hasRepeatedChars) score -= 2;
+
+        // Бонус за длину более 14 символов
+        if (length > 14) score += 1;
+
+        // Ограничиваем оценку
+        score = Math.max(1, Math.min(score, 10));
 
         // Определяем уровень сложности
         let strength, color, width;
-
         if (score <= 3) {
             strength = 'Слабый';
             color = '#f44336';
@@ -146,22 +359,24 @@ document.addEventListener('DOMContentLoaded', function() {
         strengthBar.style.backgroundColor = color;
     }
 
-    // Функция копирования пароля
     function copyPassword() {
         const password = passwordOutput.textContent;
         
-        if (!password || password === 'Нажмите "Сгенерировать"' || password.includes('Выберите')) {
+        if (!password || password === 'Нажмите "Сгенерировать"' || 
+            password.includes('Выберите') || password.includes('Нет доступных') ||
+            password.includes('Длина должна быть')) {
             return;
         }
 
-        // Используем Clipboard API для копирования
         navigator.clipboard.writeText(password).then(() => {
             showNotification('Пароль скопирован!');
         }).catch(err => {
             console.error('Ошибка копирования: ', err);
-            // Fallback для старых браузеров
+            // Fallback
             const textArea = document.createElement('textarea');
             textArea.value = password;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand('copy');
@@ -170,7 +385,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Функция показа уведомления
     function showNotification(message) {
         notification.textContent = message;
         notification.classList.add('show');
@@ -180,9 +394,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 2000);
     }
 
-    // Функция добавления пароля в историю
     function addToHistory(password) {
-        const timestamp = new Date().toLocaleTimeString();
+        const timestamp = new Date().toLocaleTimeString('ru-RU', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+        
         history.unshift({ password, timestamp });
         
         // Ограничиваем историю 10 последними паролями
@@ -190,13 +408,23 @@ document.addEventListener('DOMContentLoaded', function() {
             history = history.slice(0, 10);
         }
         
-        localStorage.setItem('passwordHistory', JSON.stringify(history));
+        saveToStorage('passwordHistory', history);
         renderHistory();
     }
 
-    // Функция отображения истории
     function renderHistory() {
         passwordHistory.innerHTML = '';
+        
+        if (history.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'История пуста';
+            li.style.color = '#888';
+            li.style.textAlign = 'center';
+            li.style.fontStyle = 'italic';
+            li.style.padding = '10px';
+            passwordHistory.appendChild(li);
+            return;
+        }
         
         history.forEach(item => {
             const li = document.createElement('li');
@@ -225,16 +453,65 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Функция очистки истории
     function clearHistory() {
         if (confirm('Очистить всю историю паролей?')) {
             history = [];
-            localStorage.removeItem('passwordHistory');
+            saveToStorage('passwordHistory', history);
             renderHistory();
             showNotification('История очищена');
         }
     }
+
+    function toggleTheme() {
+        const isLight = themeToggle.checked;
+        updateTheme(isLight);
+        saveToStorage('theme', isLight);
+    }
+
+    function updateTheme(isLight) {
+        if (isLight) {
+            document.body.classList.add('lightstyle');
+        } else {
+            document.body.classList.remove('lightstyle');
+        }
+    }
+
+    // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+
+    function saveToStorage(key, value) {
+        try {
+            localStorage.setItem(key, JSON.stringify(value));
+        } catch (error) {
+            console.error('Ошибка сохранения в localStorage:', error);
+            // Если localStorage переполнен, очищаем старые записи
+            if (error.name === 'QuotaExceededError') {
+                try {
+                    // Оставляем только 5 последних паролей в истории
+                    if (key === 'passwordHistory' && Array.isArray(value) && value.length > 5) {
+                        const trimmedHistory = value.slice(0, 5);
+                        localStorage.setItem(key, JSON.stringify(trimmedHistory));
+                        showNotification('Очищена старая история для экономии памяти');
+                    }
+                } catch (e) {
+                    console.error('Не удалось очистить localStorage:', e);
+                }
+            }
+        }
+    }
+
+    function loadFromStorage(key, defaultValue) {
+        try {
+            const item = localStorage.getItem(key);
+            return item ? JSON.parse(item) : defaultValue;
+        } catch (error) {
+            console.error('Ошибка загрузки из localStorage:', error);
+            return defaultValue;
+        }
+    }
 });
+
+// ===== ОБРАБОТКА ПЕРЕКЛЮЧАТЕЛЯ ТЕМЫ =====
+// (Оставляем для совместимости со старым кодом, но лучше использовать новый код выше)
 
 let styleMode = localStorage.getItem('styleMode');
 const styleToggle = document.querySelector('.ui-switch input[type="checkbox"]');
