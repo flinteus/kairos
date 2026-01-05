@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Kairos",
-  "version": "1.3",
-  "description": "Генератор паролей",
+  "name": "Kairos - Генератор паролей",
+  "version": "1.0.0",
+  "description": "Безопасный генератор паролей с оценкой сложности",
   "action": {
     "default_popup": "HTML.html",
+    "default_title": "Kairos - Генератор паролей",
     "default_icon": {
       "16": "icons/Kairosicon16.png",
       "48": "icons/Kairosicon48.png",
@@ -16,5 +17,12 @@
     "48": "icons/Kairosicon48.png",
     "128": "icons/kairos128.jpeg"
   },
-  "permissions": ["clipboardWrite"]
+    "permissions": [
+    "clipboardWrite",
+    "storage"
+  ],
+  "host_permissions": [],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  }
 }
