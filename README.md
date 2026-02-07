@@ -18,7 +18,9 @@
 ✅ **Бесплатно и открытый исходный код**  
 
 ## 🖼️ Скриншоты
+
 Тёмная тема:
+
 <img width="564" height="836" alt="изображение" src="https://github.com/user-attachments/assets/77577921-d3c8-4764-85df-415f8e643bf5" />
 
 <img width="557" height="836" alt="изображение" src="https://github.com/user-attachments/assets/17857a7a-a95b-4c0c-ba19-60c4ca1fdd3c" />
